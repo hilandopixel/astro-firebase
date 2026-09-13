@@ -1,0 +1,148 @@
+---
+// Panel Admin Protegido por Firebase Auth
+---
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Panel de Administración - Eventos</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
+    <main class="max-w-2xl w-full bg-white shadow-xl rounded-2xl p-8">
+      <h1 class="text-3xl font-extrabold mb-6 text-gray-800">Panel Admin: Crear Evento</h1>
+
+      <div id="login-section" class="space-y-4">
+        <p class="text-gray-600">Inicia sesión como administrador para continuar.</p>
+        <input type="email" id="admin-email" placeholder="Correo electrónico" class="w-full p-3 border rounded-lg" />
+        <input type="password" id="admin-pass" placeholder="Contraseña" class="w-full p-3 border rounded-lg" />
+        <button id="login-btn" class="w-full bg-blue-600 text-white p-3 rounded-lg font-semibold hover:bg-blue-700">
+          Iniciar Sesión
+        </button>
+        <p id="login-error" class="text-red-500 text-sm"></p>
+      </div>
+
+      <div id="admin-dashboard" class="hidden space-y-4">
+        <div class="flex justify-between items-center mb-4">
+          <span class="text-green-600 font-semibold">✔ Autenticado como Admin</span>
+          <button id="logout-btn" class="text-sm text-red-500 underline">Cerrar Sesión</button>
+        </div>
+
+        <form id="event-form" class="space-y-4">
+          <div>
+            <label class="block font-medium text-gray-700 text-sm">Título del Evento</label>
+            <input type="text" id="title" required class="w-full p-2 border rounded-lg" placeholder="Maratón Ciudad" />
+          </div>
+          <div>
+            <label class="block font-medium text-gray-700 text-sm">Identificador URL (Slug sin espacios)</label>
+            <input type="text" id="slug" required class="w-full p-2 border rounded-lg" placeholder="maraton-ciudad" />
+          </div>
+          <div>
+            <label class="block font-medium text-gray-700 text-sm">URL de la Imagen</label>
+            <input type="url" id="imageUrl" class="w-full p-2 border rounded-lg" placeholder="https://..." />
+          </div>
+          <div>
+            <label class="block font-medium text-gray-700 text-sm">Descripción</label>
+            <textarea id="description" rows="3" class="w-full p-2 border rounded-lg" placeholder="Detalles..."></textarea>
+          </div>
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block font-medium text-gray-700 text-sm">Enlace Inscripción</label>
+              <input type="url" id="inscriptionUrl" class="w-full p-2 border rounded-lg" />
+            </div>
+            <div>
+              <label class="block font-medium text-gray-700 text-sm">Enlace Más Info</label>
+              <input type="url" id="moreInfoUrl" class="w-full p-2 border rounded-lg" />
+            </div>
+          </div>
+
+          <button type="submit" class="w-full bg-black text-white p-3 rounded-lg font-bold hover:bg-gray-800 transition">
+            Generar MD y Publicar en GitHub
+          </button>
+        </form>
+        <p id="form-status" class="text-center font-medium mt-3"></p>
+      </div>
+    </main>
+
+    <script>
+      import { signInWithEmailAndPassword, signOut, onAuthStateChanged } from "firebase/auth";
+      import { auth } from "../lib/firebase";
+
+      const loginSection = document.getElementById('login-section');
+      const adminDashboard = document.getElementById('admin-dashboard');
+      const loginBtn = document.getElementById('login-btn');
+      const logoutBtn = document.getElementById('logout-btn');
+      const loginError = document.getElementById('login-error');
+      const eventForm = document.getElementById('event-form');
+      const formStatus = document.getElementById('form-status');
+
+      onAuthStateChanged(auth, (user) => {
+        if (user) {
+          loginSection?.classList.add('hidden');
+          adminDashboard?.classList.remove('hidden');
+        } else {
+          loginSection?.classList.remove('hidden');
+          adminDashboard?.classList.add('hidden');
+        }
+      });
+
+      loginBtn?.addEventListener('click', async () => {
+        const email = (document.getElementById('admin-email') as HTMLInputElement).value;
+        const pass = (document.getElementById('admin-pass') as HTMLInputElement).value;
+        try {
+          if(loginError) loginError.textContent = '';
+          await signInWithEmailAndPassword(auth, email, pass);
+        } catch (err: any) {
+          if(loginError) loginError.textContent = 'Error: ' + err.message;
+        }
+      });
+
+      logoutBtn?.addEventListener('click', () => signOut(auth));
+
+      eventForm?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        if(formStatus) {
+          formStatus.textContent = 'Procesando y generando archivo Markdown...';
+          formStatus.className = 'text-center font-medium text-blue-600 mt-3';
+        }
+
+        const payload = {
+          title: (document.getElementById('title') as HTMLInputElement).value,
+          slug: (document.getElementById('slug') as HTMLInputElement).value,
+          imageUrl: (document.getElementById('imageUrl') as HTMLInputElement).value,
+          description: (document.getElementById('description') as HTMLTextAreaElement).value,
+          inscriptionUrl: (document.getElementById('inscriptionUrl') as HTMLInputElement).value,
+          moreInfoUrl: (document.getElementById('moreInfoUrl') as HTMLInputElement).value,
+          date: new Date().toISOString()
+        };
+
+        try {
+          const response = await fetch('/api/crear-evento', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+
+          const result = await response.json();
+          if (response.ok) {
+            if(formStatus) {
+              formStatus.textContent = '¡Éxito! Archivo MD creado en GitHub. Vercel actualizará la web en minutos.';
+              formStatus.className = 'text-center font-medium text-green-600 mt-3';
+            }
+            (eventForm as HTMLFormElement).reset();
+          } else {
+            if(formStatus) {
+              formStatus.textContent = `Error: ${result.error}`;
+              formStatus.className = 'text-center font-medium text-red-600 mt-3';
+            }
+          }
+        } catch (err) {
+          if(formStatus) {
+            formStatus.textContent = 'Error de conexión con el servidor.';
+            formStatus.className = 'text-center font-medium text-red-600 mt-3';
+          }
+        }
+      });
+    </script>
+  </body>
+</html>

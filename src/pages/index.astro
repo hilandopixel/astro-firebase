@@ -1,0 +1,58 @@
+---
+import { getCollection } from 'astro:content';
+
+const allEvents = await getCollection('events');
+---
+
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Eventos Deportivos</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body class="bg-gray-50 min-h-screen">
+    <main class="max-w-6xl mx-auto p-6">
+      <header class="flex justify-between items-center mb-8">
+        <h1 class="text-4xl font-extrabold text-gray-900">Eventos Deportivos</h1>
+        <a href="/admin" class="bg-gray-900 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-gray-700">Panel Admin</a>
+      </header>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {allEvents.map((event) => (
+          <div class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-md flex flex-col justify-between">
+            <div>
+              {event.data.imageUrl && (
+                <img src={event.data.imageUrl} alt={event.data.title} class="w-full h-48 object-cover" />
+              )}
+              <div class="p-5">
+                <span class="text-xs text-blue-600 font-semibold uppercase tracking-wider">
+                  {new Date(event.data.date).toLocaleDateString()}
+                </span>
+                <h2 class="text-xl font-bold text-gray-800 mt-1 mb-2">{event.data.title}</h2>
+                <p class="text-gray-600 text-sm line-clamp-3">{event.body}</p>
+              </div>
+            </div>
+
+            <div class="p-5 pt-0">
+              <div class="flex gap-2 mb-4">
+                <a href={event.data.inscriptionUrl} target="_blank" class="flex-1 bg-blue-600 text-white text-center py-2 rounded-lg font-medium text-sm hover:bg-blue-700 transition">
+                  Inscribirme
+                </a>
+                <a href={event.data.moreInfoUrl} target="_blank" class="flex-1 bg-gray-100 text-gray-800 text-center py-2 rounded-lg font-medium text-sm hover:bg-gray-200 transition">
+                  Más Info
+                </a>
+              </div>
+
+              <div class="border-t pt-3 flex justify-around text-gray-500 text-xs font-semibold">
+                <button class="hover:text-blue-600 transition">Compartir</button>
+                <button class="hover:text-blue-400 transition">Twitter</button>
+                <button class="hover:text-blue-700 transition">Facebook</button>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </main>
+  </body>
+</html>
